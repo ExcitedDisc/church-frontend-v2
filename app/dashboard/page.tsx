@@ -237,7 +237,6 @@ export default function Dashboard() {
     const baseUrl = type === 'date' ? `${BACKEND_URL}/api/attendance/date/excel` : `${BACKEND_URL}/api/attendance/excel`;
     const params = new URLSearchParams();
     params.append("event", eventName);
-    params.append("token_auth", getAccessToken() || "");
 
     if (type === 'date') {
         if (rangeMode) {
@@ -249,7 +248,7 @@ export default function Dashboard() {
     }
 
     try {
-        const token = localStorage.getItem("authToken");
+        const token = getAccessToken();
         const res = await fetch(`${baseUrl}?${params.toString()}`, {
             headers: { "Authorization": `Bearer ${token}` }
         });
