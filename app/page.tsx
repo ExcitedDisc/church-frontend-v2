@@ -3,12 +3,8 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { 
-  Heart, 
-  Users, 
-  ClipboardCheck, 
   ArrowRight, 
   Sparkles,
-  CalendarHeart
 } from "lucide-react";
 
 export default function YouthLandingPage() {
