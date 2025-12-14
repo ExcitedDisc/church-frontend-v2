@@ -13,7 +13,7 @@ export function ClarityInit() {
   return null;
 }
 
-export function GtagInit() {
+export default function GtagInit() {
   const pathname = usePathname();
 
   useEffect(() => {
