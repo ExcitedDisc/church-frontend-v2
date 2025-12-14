@@ -212,7 +212,7 @@ export default function UsersPage() {
   const handleDownloadLogs = async () => {
     try {
         const token = localStorage.getItem("ex-access_token"); // Standardized key
-        const res = await fetch(`${BACKEND_URL}}/api/auth/logs`, {
+        const res = await fetch(`${BACKEND_URL}/api/auth/logs`, {
             headers: { "Authorization": `Bearer ${token}` }
         });
 
