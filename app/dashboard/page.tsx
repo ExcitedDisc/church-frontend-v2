@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/ui/Sidebar";
-import { http } from "@/lib/http"; // Standardized path
-import { usePermissions } from "@/lib/permission"; // Standardized path
+import { http } from "@/lib/http";
+import { usePermissions } from "@/lib/permission";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +18,10 @@ import {
   CalendarDays,
   FileSpreadsheet,
   RefreshCw,
-  Info
+  Info,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -31,12 +34,11 @@ import { getAccessToken } from "@/lib/auth";
 
 // --- Types ---
 
-// Matches the JSON response from your Python `get_attendances`
 interface AttendanceRecord {
-  attendance_id: string;          // UUID String
-  attendance_student_id: string;  // UUID String
-  attendance_event_id: string;    // UUID String
-  attendance_group_id: string;    // UUID String
+  attendance_id: string;
+  attendance_student_id: string;
+  attendance_event_id: string;
+  attendance_group_id: string;
   attendance_date: string;
 }
 
@@ -61,10 +63,7 @@ interface AttendanceResponse {
   };
 }
 
-// --- Helper Component: AsyncLabel ---
-// Fetches individual names using the "Narrow" APIs (student/<uuid>, etc.)
-// Includes a simple in-memory cache to prevent duplicate network requests.
-
+// --- Async Label Component ---
 const nameCache: Record<string, string> = {}; 
 
 interface AsyncLabelProps {
@@ -78,8 +77,6 @@ function AsyncLabel({ type, uuid }: AsyncLabelProps) {
 
   useEffect(() => {
     if (!uuid) return;
-    
-    // Check cache first
     if (nameCache[uuid]) {
       setName(nameCache[uuid]);
       setLoading(false);
@@ -87,14 +84,10 @@ function AsyncLabel({ type, uuid }: AsyncLabelProps) {
     }
 
     let isMounted = true;
-    
     const fetchDetail = async () => {
       try {
-        // Calls: /api/student/<uuid>, /api/group/<uuid>, etc.
         const res = await http<{ data: any }>(`/api/${type}/${uuid}`);
-        
         if (isMounted && res.data) {
-          // Map response fields based on type
           let fetchedName = "";
           if (type === "student") fetchedName = res.data.student_name;
           if (type === "group") fetchedName = res.data.group_name;
@@ -108,25 +101,18 @@ function AsyncLabel({ type, uuid }: AsyncLabelProps) {
           }
         }
       } catch (err) {
-        // Silent fail for UI cleanliness
         if (isMounted) setName("Unknown");
       } finally {
         if (isMounted) setLoading(false);
       }
     };
-
     fetchDetail();
-
     return () => { isMounted = false; };
   }, [type, uuid]);
 
   if (loading) return <span className="inline-block w-20 h-4 bg-gray-100 animate-pulse rounded align-middle"></span>;
-  
   return <span className="font-medium text-gray-900">{name}</span>;
 }
-
-
-// --- Main Dashboard ---
 
 export default function Dashboard() {
   const router = useRouter();
@@ -135,11 +121,9 @@ export default function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loadingAttendance, setLoadingAttendance] = useState(true);
 
-  // Filter Data (We fetch full lists just for the Dropdowns)
+  // Data
   const [groups, setGroups] = useState<Group[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
-
-  // Attendance Table Data
   const [attendances, setAttendances] = useState<AttendanceRecord[]>([]);
   
   // Pagination
@@ -158,7 +142,11 @@ export default function Dashboard() {
   const [startDate, setStartDate] = useState(todayString);
   const [endDate, setEndDate] = useState(todayString);
 
-  // --- 1. Fetch Dropdown Data ---
+  // Sorting State
+  const [sortBy, setSortBy] = useState<string>("date"); 
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+
+  // --- Fetch Filters ---
   useEffect(() => {
     const fetchFilters = async () => {
       try {
@@ -175,13 +163,17 @@ export default function Dashboard() {
     fetchFilters();
   }, []);
 
-  // --- 2. Fetch Attendance Data ---
+  // --- Fetch Attendance ---
   const fetchAttendance = async () => {
     setLoadingAttendance(true);
     try {
       const params = new URLSearchParams();
       params.append("page", currentPage.toString());
       
+      // Sorting Params sent to backend
+      params.append("sort_by", sortBy);
+      params.append("order", sortOrder);
+
       if (filterEventUuid !== "ALL") params.append("event", filterEventUuid);
       if (filterGroupUuid !== "ALL") params.append("group", filterGroupUuid);
 
@@ -206,17 +198,26 @@ export default function Dashboard() {
     }
   };
 
-  // Re-fetch when any filter changes
   useEffect(() => {
     fetchAttendance();
-  }, [currentPage, filterEventUuid, filterGroupUuid, rangeMode, singleDate, startDate, endDate]);
+  }, [currentPage, filterEventUuid, filterGroupUuid, rangeMode, singleDate, startDate, endDate, sortBy, sortOrder]);
 
-  // --- Actions ---
+  // --- Handlers ---
+
+  const handleSort = (column: string) => {
+    if (sortBy === column) {
+      // Toggle order if clicking the same column
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    } else {
+      // New column, default to asc
+      setSortBy(column);
+      setSortOrder("asc");
+    }
+  };
 
   const handleDelete = async (attendanceUuid: string) => {
     if (!confirm("Delete this attendance record?")) return;
     try {
-      // Calls DELETE /api/attendance/<uuid>
       await http(`/api/attendance/${attendanceUuid}`, { method: "DELETE" });
       fetchAttendance(); 
     } catch (error: any) {
@@ -229,8 +230,6 @@ export default function Dashboard() {
         alert("Please select an Event to export.");
         return;
     }
-    
-    // API requires Event Name, so we look it up from our list
     const eventName = events.find(e => e.event_uuid === filterEventUuid)?.event_name;
     if (!eventName) return;
 
@@ -252,9 +251,7 @@ export default function Dashboard() {
         const res = await fetch(`${baseUrl}?${params.toString()}`, {
             headers: { "Authorization": `Bearer ${token}` }
         });
-
         if (!res.ok) throw new Error("Export failed");
-
         const blob = await res.blob();
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -269,9 +266,30 @@ export default function Dashboard() {
     }
   };
 
+  // --- Header Component for Sorting ---
+  const SortableHeader = ({ label, columnKey }: { label: string, columnKey: string }) => {
+    const isActive = sortBy === columnKey;
+    return (
+      <th 
+        className="py-3 px-6 text-left font-medium text-gray-700 cursor-pointer hover:bg-gray-100 transition-colors select-none group"
+        onClick={() => handleSort(columnKey)}
+      >
+        <div className="flex items-center gap-1">
+          {label}
+          <span className="text-gray-400 group-hover:text-blue-500">
+            {isActive ? (
+                sortOrder === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+            ) : (
+                <ArrowUpDown className="h-3 w-3 opacity-0 group-hover:opacity-100" />
+            )}
+          </span>
+        </div>
+      </th>
+    );
+  };
+
   return (
     <div className="flex min-h-screen bg-gray-50">
-      {/* Mobile Toggle */}
       <div className="md:hidden fixed top-4 left-4 z-50">
         <Button onClick={() => setSidebarOpen(!sidebarOpen)} variant="outline" size="icon">
           <Menu className="h-6 w-6" />
@@ -290,89 +308,51 @@ export default function Dashboard() {
           <CardContent className="pt-6">
             <div className="flex flex-col xl:flex-row gap-6 justify-between items-start xl:items-end">
               
-              {/* Filter Controls */}
               <div className="flex flex-wrap items-end gap-4 w-full xl:w-auto">
-                
-                {/* Date Mode */}
                 <div className="flex flex-col gap-1.5 min-w-[140px]">
                     <Label className="text-xs font-semibold text-gray-500 uppercase">Mode</Label>
-                    <Button 
-                        size="sm" 
-                        variant="outline" 
-                        onClick={() => setRangeMode(!rangeMode)}
-                        className="w-full justify-between"
-                    >
+                    <Button size="sm" variant="outline" onClick={() => setRangeMode(!rangeMode)} className="w-full justify-between">
                         {rangeMode ? "Range" : "Single Date"}
                         <RefreshCw className="h-3 w-3 ml-2 opacity-50" />
                     </Button>
                 </div>
 
-                {/* Date Inputs */}
                 {!rangeMode ? (
                     <div className="flex flex-col gap-1.5">
                         <Label className="text-xs font-semibold text-gray-500 uppercase">Date</Label>
-                        <Input 
-                            type="date" 
-                            value={singleDate} 
-                            onChange={(e) => setSingleDate(e.target.value)} 
-                            className="w-auto bg-white" 
-                        />
+                        <Input type="date" value={singleDate} onChange={(e) => setSingleDate(e.target.value)} className="w-auto bg-white" />
                     </div>
                 ) : (
                     <>
                         <div className="flex flex-col gap-1.5">
                             <Label className="text-xs font-semibold text-gray-500 uppercase">Start</Label>
-                            <Input 
-                                type="date" 
-                                value={startDate} 
-                                onChange={(e) => setStartDate(e.target.value)} 
-                                className="w-auto bg-white" 
-                            />
+                            <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-auto bg-white" />
                         </div>
                         <div className="flex flex-col gap-1.5">
                             <Label className="text-xs font-semibold text-gray-500 uppercase">End</Label>
-                            <Input 
-                                type="date" 
-                                value={endDate} 
-                                onChange={(e) => setEndDate(e.target.value)} 
-                                className="w-auto bg-white" 
-                            />
+                            <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-auto bg-white" />
                         </div>
                     </>
                 )}
 
-                {/* Event Dropdown */}
                 <div className="flex flex-col gap-1.5 min-w-[180px]">
                     <Label className="text-xs font-semibold text-gray-500 uppercase">Event</Label>
                     <Select value={filterEventUuid} onValueChange={setFilterEventUuid}>
-                        <SelectTrigger className="bg-white">
-                            <SelectValue placeholder="All Events" />
-                        </SelectTrigger>
+                        <SelectTrigger className="bg-white"><SelectValue placeholder="All Events" /></SelectTrigger>
                         <SelectContent>
                             <SelectItem value="ALL">All Events</SelectItem>
-                            {events.map(e => (
-                                <SelectItem key={e.event_uuid} value={e.event_uuid}>
-                                    {e.event_name}
-                                </SelectItem>
-                            ))}
+                            {events.map(e => (<SelectItem key={e.event_uuid} value={e.event_uuid}>{e.event_name}</SelectItem>))}
                         </SelectContent>
                     </Select>
                 </div>
 
-                {/* Group Dropdown */}
                 <div className="flex flex-col gap-1.5 min-w-[180px]">
                     <Label className="text-xs font-semibold text-gray-500 uppercase">Group</Label>
                     <Select value={filterGroupUuid} onValueChange={setFilterGroupUuid}>
-                        <SelectTrigger className="bg-white">
-                            <SelectValue placeholder="All Groups" />
-                        </SelectTrigger>
+                        <SelectTrigger className="bg-white"><SelectValue placeholder="All Groups" /></SelectTrigger>
                         <SelectContent>
                             <SelectItem value="ALL">All Groups</SelectItem>
-                            {groups.map(g => (
-                                <SelectItem key={g.group_uuid} value={g.group_uuid}>
-                                    {g.group_name}
-                                </SelectItem>
-                            ))}
+                            {groups.map(g => (<SelectItem key={g.group_uuid} value={g.group_uuid}>{g.group_name}</SelectItem>))}
                         </SelectContent>
                     </Select>
                 </div>
@@ -382,24 +362,12 @@ export default function Dashboard() {
                 </Button>
               </div>
 
-              {/* Export Buttons */}
               {hasPermission("attendance:excel") && (
                   <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="outline" className="gap-2">
-                            <Download className="h-4 w-4" />
-                            Export
-                        </Button>
-                    </DropdownMenuTrigger>
+                    <DropdownMenuTrigger asChild><Button variant="outline" className="gap-2"><Download className="h-4 w-4" /> Export</Button></DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleExcelExport('date')}>
-                            <CalendarDays className="mr-2 h-4 w-4" />
-                            Current Selection
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleExcelExport('full')}>
-                            <FileSpreadsheet className="mr-2 h-4 w-4" />
-                            Full Event History
-                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleExcelExport('date')}><CalendarDays className="mr-2 h-4 w-4" /> Current Selection</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleExcelExport('full')}><FileSpreadsheet className="mr-2 h-4 w-4" /> Full Event History</DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
               )}
@@ -417,58 +385,35 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent className="p-0">
             {loadingAttendance ? (
-                <div className="flex justify-center py-16">
-                    <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
-                </div>
+                <div className="flex justify-center py-16"><Loader2 className="h-10 w-10 animate-spin text-blue-600" /></div>
             ) : attendances.length === 0 ? (
-                <div className="text-center py-16 text-gray-500">
-                    No attendance records found matching your criteria.
-                </div>
+                <div className="text-center py-16 text-gray-500">No attendance records found matching your criteria.</div>
             ) : (
                 <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left">
                     <thead className="bg-gray-50 text-gray-600 uppercase text-xs font-semibold">
                     <tr>
-                        <th className="py-3 px-6">Student Name</th>
-                        <th className="py-3 px-6">Group</th>
-                        <th className="py-3 px-6">Event</th>
-                        <th className="py-3 px-6">Date</th>
+                        <SortableHeader label="Student Name" columnKey="student_name" />
+                        <SortableHeader label="Group" columnKey="group_name" />
+                        <SortableHeader label="Event" columnKey="event_name" />
+                        <SortableHeader label="Date" columnKey="date" />
                         <th className="py-3 px-6 text-right">Actions</th>
                     </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                     {attendances.map((r) => (
                         <tr key={r.attendance_id} className="hover:bg-blue-50/30 transition-colors">
-                            
-                            {/* Student Name: Fetched by UUID */}
-                            <td className="py-3 px-6 text-gray-900">
-                                <AsyncLabel type="student" uuid={r.attendance_student_id} />
-                            </td>
-
-                            {/* Group Name: Fetched by UUID */}
+                            <td className="py-3 px-6 text-gray-900"><AsyncLabel type="student" uuid={r.attendance_student_id} /></td>
                             <td className="py-3 px-6 text-gray-600">
                                 <span className="inline-flex items-center px-2 py-1 rounded-md bg-gray-100 text-xs font-medium border border-gray-200">
                                     <AsyncLabel type="group" uuid={r.attendance_group_id} />
                                 </span>
                             </td>
-
-                            {/* Event Name: Fetched by UUID */}
-                            <td className="py-3 px-6 text-gray-600">
-                                <AsyncLabel type="event" uuid={r.attendance_event_id} />
-                            </td>
-
-                            <td className="py-3 px-6 text-gray-600 font-mono">
-                                {new Date(r.attendance_date).toLocaleDateString()}
-                            </td>
-                            
+                            <td className="py-3 px-6 text-gray-600"><AsyncLabel type="event" uuid={r.attendance_event_id} /></td>
+                            <td className="py-3 px-6 text-gray-600 font-mono">{new Date(r.attendance_date).toLocaleDateString()}</td>
                             <td className="py-3 px-6 text-right">
                                 {hasPermission("attendance:delete") && (
-                                    <Button 
-                                        size="sm" 
-                                        variant="ghost" 
-                                        className="h-8 w-8 p-0 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full"
-                                        onClick={() => handleDelete(r.attendance_id)}
-                                    >
+                                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full" onClick={() => handleDelete(r.attendance_id)}>
                                         <Trash2 className="h-4 w-4" />
                                     </Button>
                                 )}
@@ -481,29 +426,13 @@ export default function Dashboard() {
             )}
           </CardContent>
 
-          {/* Pagination Controls */}
+          {/* Pagination */}
           {!loadingAttendance && totalPages > 1 && (
              <div className="flex items-center justify-between px-6 py-4 border-t bg-gray-50/30">
-                <div className="text-sm text-gray-500">
-                    Page <span className="font-medium text-gray-900">{currentPage}</span> of {totalPages}
-                </div>
+                <div className="text-sm text-gray-500">Page <span className="font-medium text-gray-900">{currentPage}</span> of {totalPages}</div>
                 <div className="flex gap-2">
-                    <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                        disabled={currentPage === 1}
-                    >
-                        Previous
-                    </Button>
-                    <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                        disabled={currentPage === totalPages}
-                    >
-                        Next
-                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>Previous</Button>
+                    <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>Next</Button>
                 </div>
             </div>
           )}
