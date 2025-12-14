@@ -17,8 +17,8 @@ export const metadata: Metadata = {
   title: "Church Attendance App",
   description: "Manage attendance for your church groups with ease.",
   icons: {
-    icon: "https://public.neflcdn.uk/favico.ico",
-    shortcut: "https://public.neflcdn.uk/favico.ico",
+    icon: "https://public.neflcdn.uk/church/church-favico.ico",
+    shortcut: "https://public.neflcdn.uk/church/church-favico.ico",
   },
 };
 
