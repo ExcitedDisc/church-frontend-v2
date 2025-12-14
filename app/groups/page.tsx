@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/ui/Sidebar";
 import { http } from "@/lib/http";
-import { usePermissions } from "@/lib/permission"; // IMPORT HOOK
+import { usePermissions } from "@/lib/permission";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,7 +33,8 @@ import {
   Trash2,
   Loader2,
   MoreVertical,
-  Users
+  Users,
+  Menu // Import Menu icon
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -164,6 +165,14 @@ export default function GroupsPage() {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
+      
+      {/* --- ADDED: Mobile Hamburger Toggle --- */}
+      <div className="md:hidden fixed top-4 left-4 z-50">
+        <Button onClick={() => setSidebarOpen(!sidebarOpen)} variant="outline" size="icon">
+          <Menu className="h-6 w-6" />
+        </Button>
+      </div>
+
       <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
       <main className="flex-1 p-6 md:p-8 overflow-y-auto">

@@ -32,6 +32,36 @@ export default function LoginPage() {
     setIsMounted(true);
   }, []);
 
+  // --- Helper to extract message from complex JSON ---
+  const getErrorMessage = (error: any): string => {
+    if (!error) return "An unknown error occurred";
+
+    // 1. Check for Python API format: { "error": { "message": "..." } }
+    if (error.error?.message) {
+      return error.error.message;
+    }
+
+    // 2. Check for flat format: { "message": "..." }
+    if (error.message) {
+        // Sometimes error.message is actually a stringified JSON
+        try {
+            const parsed = JSON.parse(error.message);
+            if (parsed.error?.message) return parsed.error.message;
+            if (parsed.message) return parsed.message;
+        } catch {
+            // It was just a plain string message
+            return error.message;
+        }
+    }
+
+    // 3. Fallback if it's just a string
+    if (typeof error === "string") {
+      return error;
+    }
+
+    return "Something went wrong";
+  };
+
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
     setErrorMessage("");
@@ -59,6 +89,7 @@ export default function LoginPage() {
         }),
       });
 
+      // Handle successful login
       setRefreshToken(data.data.refresh_token);
       setEmail(data.data.admin_username);
       setUUID(data.data.admin_uuid);
@@ -67,9 +98,13 @@ export default function LoginPage() {
       router.push("/dashboard");
 
     } catch (error: any) {
-      const msg = error.message || "Something went wrong.";
-      setErrorMessage(msg);
-      toast.error(msg);
+      // Use the helper to get the clean string
+      const cleanMessage = getErrorMessage(error);
+      
+      setErrorMessage(cleanMessage);
+      toast.error(cleanMessage);
+      
+      // Reset sensitive/security fields
       captchaRef.current?.resetCaptcha();
       setCaptchaToken(null);
     } finally {
@@ -96,27 +131,21 @@ export default function LoginPage() {
           backgroundPosition: 'center',
         }}
       >
-        {/* Light Overlay (White tint instead of black) */}
+        {/* Light Overlay */}
         <div className="absolute inset-0 bg-white/30 backdrop-blur-[2px]"></div>
       </div>
 
       {/* Light Glass Card */}
       <div className="relative z-10 w-full max-w-md p-8 mx-4">
 
-        {/* 
-            Glass Effect Changes:
-            bg-white/60 -> Milky white transparency
-            border-white/50 -> Subtle white border
-            shadow-2xl -> Soft shadow to lift it off background
-        */}
         <div className="relative overflow-hidden rounded-2xl border border-white/50 bg-white/60 backdrop-blur-xl shadow-2xl">
 
           {/* Shine effect at top */}
-          <div className="absolute inset-0 bg-linear-to-b from-white/40 to-transparent pointer-events-none"></div>
+          <div className="absolute inset-0 bg-gradient-to-b from-white/40 to-transparent pointer-events-none"></div>
 
           <div className="relative z-20 p-8 flex flex-col items-center text-center space-y-6">
 
-            {/* Logo - Dark icon on light glass */}
+            {/* Logo */}
             <div className="h-12 w-12 rounded-xl bg-white/80 flex items-center justify-center backdrop-blur-md border border-white/60 shadow-sm">
               <Church className="h-6 w-6 text-zinc-900" />
             </div>
@@ -130,11 +159,11 @@ export default function LoginPage() {
               </p>
             </div>
 
-            {/* Error Message - Red on light background */}
+            {/* Error Message Display - Only shows text now */}
             {errorMessage && (
-              <div className="w-full flex items-center gap-2 p-3 text-sm text-red-600 bg-red-50/80 border border-red-200 rounded-md">
-                <AlertCircle className="h-4 w-4" />
-                <span>{errorMessage}</span>
+              <div className="w-full flex items-start gap-3 p-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded-md animate-in fade-in slide-in-from-top-1 duration-200">
+                <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
+                <span className="text-left font-medium">{errorMessage}</span>
               </div>
             )}
 
@@ -145,12 +174,11 @@ export default function LoginPage() {
                 <Label htmlFor="username" className="text-zinc-700 ml-1 text-xs uppercase tracking-wider font-semibold">Username</Label>
                 <Input
                   id="username"
-                  placeholder="example@macch.uk"
-                  type="email"
+                  placeholder="admin_user"
+                  type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   disabled={isLoading}
-                  // Light Glass Input: bg-white/50, dark text, subtle border
                   className="bg-white/50 border-zinc-200/50 text-zinc-900 placeholder:text-zinc-500 focus:bg-white/80 focus:ring-zinc-400 h-11"
                 />
               </div>
@@ -179,7 +207,7 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              {/* hCaptcha - Changed theme to "light" */}
+              {/* hCaptcha */}
               <div className="flex justify-center py-2">
                 <HCaptcha
                   sitekey="1398d654-52b2-4362-9280-011a6182d85e"
@@ -189,7 +217,7 @@ export default function LoginPage() {
                 />
               </div>
 
-              {/* Submit Button - Solid Black for contrast */}
+              {/* Submit Button */}
               <Button
                 disabled={isLoading}
                 className="w-full h-11 bg-zinc-900 text-white hover:bg-black font-bold transition-all shadow-lg hover:shadow-xl"
