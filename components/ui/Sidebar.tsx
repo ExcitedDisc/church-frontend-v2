@@ -14,6 +14,7 @@ import {
     Menu,
     Shield,
     FileText,
+    Key,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -33,6 +34,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }: SidebarProps) {
         { label: "Absences", href: "/admin/absences", icon: <Calendar className="w-5 h-5" /> },
         { label: "Admin", href: "/admin", icon: <Users className="w-5 h-5" /> },
         { label: "Roles", href: "/admin/roles", icon: <Shield className="w-5 h-5" /> },
+        { label: "API Keys", href: "/admin/apikeys", icon: <Key className="w-5 h-5" /> },
         { label: "GDPR", href: "/gdpr", icon: <CheckSquare className="w-5 h-5" /> },
     ];
 
@@ -88,8 +90,8 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }: SidebarProps) {
                                     href={item.href}
                                     onClick={() => setSidebarOpen(false)}
                                     className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all group ${isActive
-                                            ? "bg-blue-50 text-blue-700 font-medium shadow-sm"
-                                            : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                                        ? "bg-blue-50 text-blue-700 font-medium shadow-sm"
+                                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                                         }`}
                                 >
                                     <span className={`${isActive ? "text-blue-600" : "text-gray-400 group-hover:text-gray-600"}`}>

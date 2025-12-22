@@ -85,9 +85,16 @@ export default function LoginPage() {
       setIsManualChecking(true);
     }
 
+    // Guard against missing credentials
+    if (!useUuid || !useToken) {
+      if (isManual) console.error("Missing MFA credentials for check");
+      if (isManual) setIsManualChecking(false);
+      return;
+    }
+
     try {
       const response = await request<any>(
-        `/api/auth/mfa_token?mfa_session_uuid=${mfaSessionUuid}&mfa_token=${mfaToken}`,
+        `/api/auth/mfa_token?mfa_session_uuid=${useUuid}&mfa_token=${useToken}`,
         { method: "GET" }
       );
 
@@ -144,13 +151,14 @@ export default function LoginPage() {
       // Random interval between 5-8 seconds (5000-8000ms)
       const randomInterval = Math.floor(Math.random() * 3000) + 5000;
       pollingIntervalRef.current = setTimeout(() => {
-        checkMfaStatus(false);
+        // ALWAYS pass the explicit values from the closure, not the state
+        checkMfaStatus(false, sessionUuid, token);
         scheduleNextCheck();
       }, randomInterval);
     };
 
-    // Check immediately
-    checkMfaStatus(false);
+    // Check immediately with explicit values
+    checkMfaStatus(false, sessionUuid, token);
     // Schedule next check
     scheduleNextCheck();
   };
