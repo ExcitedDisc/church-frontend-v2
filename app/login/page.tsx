@@ -80,21 +80,31 @@ export default function LoginPage() {
   };
 
   // --- MFA Polling Logic ---
-  const checkMfaStatus = async (isManual: boolean = false) => {
+  const checkMfaStatus = async (isManual: boolean = false, sessionUuid?: string, token?: string) => {
     if (isManual) {
       setIsManualChecking(true);
     }
 
+    // Use passed arguments OR fall back to state
+    // This allows the polling loop to use the closure values (which are stable)
+    // and the manual button to use the state values (which should be set by then)
+    const uuidToCheck = sessionUuid || mfaSessionUuid;
+    const tokenToCheck = token || mfaToken;
+
     // Guard against missing credentials
-    if (!useUuid || !useToken) {
-      if (isManual) console.error("Missing MFA credentials for check");
+    if (!uuidToCheck || !tokenToCheck) {
+      if (isManual) {
+        console.error("Missing MFA credentials for check", { uuidToCheck, tokenToCheck });
+        toast.error("Missing MFA session info. Please try logging in again.");
+      }
       if (isManual) setIsManualChecking(false);
       return;
     }
 
     try {
+      // NOTE: Using uuidToCheck and tokenToCheck here
       const response = await request<any>(
-        `/api/auth/mfa_token?mfa_session_uuid=${useUuid}&mfa_token=${useToken}`,
+        `/api/auth/mfa_token?mfa_session_uuid=${uuidToCheck}&mfa_token=${tokenToCheck}`,
         { method: "GET" }
       );
 

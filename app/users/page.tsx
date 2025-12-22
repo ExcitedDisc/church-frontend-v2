@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/ui/Sidebar";
-import { http } from "@/lib/http"; 
-import { usePermissions } from "@/lib/permission"; 
+import { http } from "@/lib/http";
+import { usePermissions } from "@/lib/permission";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -86,6 +86,18 @@ interface ApiResponse<T> {
   message: string;
 }
 
+// --- Data Cache (Module Scope) ---
+// Defined outside the component to persist across navigation
+let cachedData = {
+  students: null as Student[] | null,
+  groups: null as Group[] | null,
+  events: null as Event[] | null,
+  timestamp: 0
+};
+
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+
 export default function StudentsPage() {
   const router = useRouter();
   const { hasPermission, loading: permLoading } = usePermissions();
@@ -132,18 +144,43 @@ export default function StudentsPage() {
 
   // --- Data Fetching ---
 
-  const fetchData = async () => {
+  const fetchData = async (forceRefresh = false) => {
     try {
       setLoading(true);
-      const [studentsRes, groupsRes, eventsRes] = await Promise.all([
-        http<ApiResponse<Student[]>>("/api/students"),
-        http<ApiResponse<Group[]>>("/api/groups"),
-        http<ApiResponse<Event[]>>("/api/events")
-      ]);
 
-      setStudents(studentsRes.data || []);
-      setGroups(groupsRes.data || []);
-      setEvents(eventsRes.data || []);
+      const now = Date.now();
+      const isCacheValid = (now - cachedData.timestamp < CACHE_DURATION);
+
+      let studentsData = cachedData.students;
+      let groupsData = cachedData.groups;
+      let eventsData = cachedData.events;
+
+      if (forceRefresh || !isCacheValid || !studentsData || !groupsData || !eventsData) {
+        console.log("Fetching fresh data from API...");
+        const [studentsRes, groupsRes, eventsRes] = await Promise.all([
+          http<ApiResponse<Student[]>>("/api/students"),
+          http<ApiResponse<Group[]>>("/api/groups"),
+          http<ApiResponse<Event[]>>("/api/events")
+        ]);
+
+        studentsData = studentsRes.data || [];
+        groupsData = groupsRes.data || [];
+        eventsData = eventsRes.data || [];
+
+        // Update Cache
+        cachedData = {
+          students: studentsData,
+          groups: groupsData,
+          events: eventsData,
+          timestamp: now
+        };
+      } else {
+        console.log("Using cached data...");
+      }
+
+      setStudents(studentsData || []);
+      setGroups(groupsData || []);
+      setEvents(eventsData || []);
     } catch (error: any) {
       console.error(error);
       if (error.message === "Unauthorized") router.push("/login");
@@ -199,7 +236,7 @@ export default function StudentsPage() {
         })
       });
 
-      await fetchData();
+      await fetchData(true); // Force refresh after save
       closeStudentDialog();
       toast.success(isEdit ? "Student updated successfully" : "Student created successfully");
     } catch (error: any) {
@@ -217,7 +254,8 @@ export default function StudentsPage() {
       const method = student.student_active ? "DELETE" : "PUT";
 
       await http(url, { method });
-      fetchData();
+      await http(url, { method });
+      fetchData(true); // Force refresh
       toast.success(student.student_active ? "Student archived" : "Student restored");
     } catch (error: any) {
       toast.error(error.message || "Operation failed");
@@ -228,7 +266,7 @@ export default function StudentsPage() {
     if (!studentToDelete) return;
     try {
       await http(`/api/student/${studentToDelete.student_uuid}/hard_delete`, { method: "DELETE" });
-      fetchData();
+      fetchData(true); // Force refresh
       setDeleteConfirmOpen(false);
       setStudentToDelete(null);
       toast.success("Student permanently deleted");
@@ -253,18 +291,18 @@ export default function StudentsPage() {
 
     setIsBatchLoading(true);
     let successCount = 0;
-    
+
     // Process in parallel
     const promises = names.map(async (name) => {
-        try {
-             await http("/api/student", {
-                method: "POST",
-                body: JSON.stringify({ name, group_uuid: batchGroupUuid })
-             });
-             successCount++;
-        } catch (e) {
-            console.error(`Failed to create ${name}`);
-        }
+      try {
+        await http("/api/student", {
+          method: "POST",
+          body: JSON.stringify({ name, group_uuid: batchGroupUuid })
+        });
+        successCount++;
+      } catch (e) {
+        console.error(`Failed to create ${name}`);
+      }
     });
 
     await Promise.allSettled(promises);
@@ -273,12 +311,12 @@ export default function StudentsPage() {
     setIsBatchDialogOpen(false);
     setBatchInput("");
     setBatchGroupUuid("");
-    fetchData();
+    fetchData(true); // Force refresh
 
     if (successCount === names.length) {
-        toast.success(`Created ${successCount} students successfully.`);
+      toast.success(`Created ${successCount} students successfully.`);
     } else {
-        toast.warning(`Created ${successCount} out of ${names.length} students.`);
+      toast.warning(`Created ${successCount} out of ${names.length} students.`);
     }
   }
 
@@ -313,7 +351,7 @@ export default function StudentsPage() {
 
     setIsSubmitting(false);
     setIsAttendanceDialogOpen(false);
-    setSelectedStudentUuids(new Set()); 
+    setSelectedStudentUuids(new Set());
 
     if (failCount === 0) {
       toast.success(`Attendance marked for ${successCount} students`);
@@ -364,14 +402,14 @@ export default function StudentsPage() {
 
   if (!permLoading && !hasPermission("student:read")) {
     return (
-        <div className="flex min-h-screen items-center justify-center bg-gray-50">
-            <div className="text-center p-8">
-                <ShieldAlert className="h-12 w-12 text-red-500 mx-auto mb-4" />
-                <h1 className="text-2xl font-bold text-gray-900">Access Denied</h1>
-                <p className="text-gray-500 mt-2">You do not have permission to view the directory.</p>
-                <Button className="mt-6" onClick={() => router.push("/dashboard")}>Return to Dashboard</Button>
-            </div>
+      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+        <div className="text-center p-8">
+          <ShieldAlert className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <h1 className="text-2xl font-bold text-gray-900">Access Denied</h1>
+          <p className="text-gray-500 mt-2">You do not have permission to view the directory.</p>
+          <Button className="mt-6" onClick={() => router.push("/dashboard")}>Return to Dashboard</Button>
         </div>
+      </div>
     );
   }
 
@@ -391,8 +429,8 @@ export default function StudentsPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-                <Users className="h-8 w-8 text-blue-600" />
-                Students
+              <Users className="h-8 w-8 text-blue-600" />
+              Students
             </h1>
             <p className="text-gray-500 mt-1">Manage directory and attendance.</p>
           </div>
@@ -447,14 +485,14 @@ export default function StudentsPage() {
               </div>
 
               {/* Show Inactive Toggle */}
-              <div 
-                className="flex items-center space-x-2 border rounded-md px-3 py-2 bg-white h-10 cursor-pointer hover:bg-gray-50 transition-colors select-none" 
+              <div
+                className="flex items-center space-x-2 border rounded-md px-3 py-2 bg-white h-10 cursor-pointer hover:bg-gray-50 transition-colors select-none"
                 onClick={() => setShowInactive(!showInactive)}
               >
                 <Checkbox id="show-inactive" checked={showInactive} onCheckedChange={(c) => setShowInactive(!!c)} />
                 <Label htmlFor="show-inactive" className="cursor-pointer text-sm font-medium text-gray-700 flex items-center gap-2 pointer-events-none">
-                    Show Archived
-                    <Archive className="h-3 w-3 text-gray-400" />
+                  Show Archived
+                  <Archive className="h-3 w-3 text-gray-400" />
                 </Label>
               </div>
             </div>
@@ -479,7 +517,7 @@ export default function StudentsPage() {
           <CardHeader className="border-b bg-gray-50/50 flex flex-row justify-between items-center py-4">
             <CardTitle className="text-lg text-gray-700">Directory</CardTitle>
             <div className="text-xs text-gray-500 font-medium">
-                Showing {filteredStudents.length} records
+              Showing {filteredStudents.length} records
             </div>
           </CardHeader>
           <CardContent className="p-0">
