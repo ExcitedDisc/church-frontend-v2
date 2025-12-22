@@ -20,7 +20,7 @@ export default function ServerErrorPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
       <Card className="w-full max-w-md shadow-lg border-red-100">
-        
+
         <CardHeader className="text-center pb-2">
           <div className="flex justify-center mb-4">
             <div className="h-20 w-20 bg-red-50 rounded-full flex items-center justify-center animate-pulse">
@@ -45,17 +45,17 @@ export default function ServerErrorPage() {
         </CardContent>
 
         <CardFooter className="flex flex-col gap-3 pt-2">
-          <Button 
-            onClick={handleRetry} 
+          <Button
+            onClick={handleRetry}
             className="w-full bg-blue-600 hover:bg-blue-700 text-white h-11"
           >
             <RefreshCcw className="mr-2 h-4 w-4" />
             Try Again
           </Button>
-          
-          <Button 
-            onClick={handleHome} 
-            variant="outline" 
+
+          <Button
+            onClick={handleHome}
+            variant="outline"
             className="w-full border-gray-200 text-gray-700 hover:bg-gray-50 h-11"
           >
             <Home className="mr-2 h-4 w-4" />
