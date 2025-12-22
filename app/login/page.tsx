@@ -30,6 +30,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [isMounted, setIsMounted] = useState(false);
+  const [isManualChecking, setIsManualChecking] = useState(false);
 
   // Refs
   const captchaRef = useRef<HCaptcha>(null);
@@ -79,57 +80,79 @@ export default function LoginPage() {
   };
 
   // --- MFA Polling Logic ---
+  const checkMfaStatus = async (isManual: boolean = false) => {
+    if (isManual) {
+      setIsManualChecking(true);
+    }
+
+    try {
+      const response = await request<any>(
+        `/api/auth/mfa_token?mfa_session_uuid=${mfaSessionUuid}&mfa_token=${mfaToken}`,
+        { method: "GET" }
+      );
+
+      // MFA approved - complete login
+      if (response.data?.refresh_token) {
+        // Stop polling
+        if (pollingIntervalRef.current) {
+          clearTimeout(pollingIntervalRef.current);
+        }
+
+        setRefreshToken(response.data.refresh_token);
+        setEmail(response.data.admin_username);
+        setUUID(response.data.admin_uuid);
+
+        toast.success("MFA approved! Login successful");
+        router.push("/dashboard");
+      } else if (isManual) {
+        toast.info("Still waiting for approval...");
+      }
+    } catch (error: any) {
+      const cleanMessage = getErrorMessage(error);
+
+      // Check if it's a rejection or expiration
+      if (cleanMessage.includes("rejected") || cleanMessage.includes("expired")) {
+        // Stop polling
+        if (pollingIntervalRef.current) {
+          clearTimeout(pollingIntervalRef.current);
+        }
+
+        setMfaRequired(false);
+        setMfaPolling(false);
+        setErrorMessage(cleanMessage);
+        toast.error(cleanMessage);
+
+        // Reset form
+        captchaRef.current?.resetCaptcha();
+        setCaptchaToken(null);
+      } else if (isManual) {
+        // For manual checks, show info that it's still pending
+        toast.info("Still waiting for approval...");
+      }
+      // Otherwise, continue polling (MFA not yet approved)
+    } finally {
+      if (isManual) {
+        setIsManualChecking(false);
+      }
+    }
+  };
+
   const startMfaPolling = (sessionUuid: string, token: string) => {
     setMfaPolling(true);
 
-    const checkMfaStatus = async () => {
-      try {
-        const response = await request<any>(
-          `/api/auth/mfa_token?mfa_session_uuid=${sessionUuid}&mfa_token=${token}`,
-          { method: "GET" }
-        );
-
-        // MFA approved - complete login
-        if (response.data?.refresh_token) {
-          // Stop polling
-          if (pollingIntervalRef.current) {
-            clearInterval(pollingIntervalRef.current);
-          }
-
-          setRefreshToken(response.data.refresh_token);
-          setEmail(response.data.admin_username);
-          setUUID(response.data.admin_uuid);
-
-          toast.success("MFA approved! Login successful");
-          router.push("/dashboard");
-        }
-      } catch (error: any) {
-        const cleanMessage = getErrorMessage(error);
-
-        // Check if it's a rejection or expiration
-        if (cleanMessage.includes("rejected") || cleanMessage.includes("expired")) {
-          // Stop polling
-          if (pollingIntervalRef.current) {
-            clearInterval(pollingIntervalRef.current);
-          }
-
-          setMfaRequired(false);
-          setMfaPolling(false);
-          setErrorMessage(cleanMessage);
-          toast.error(cleanMessage);
-
-          // Reset form
-          captchaRef.current?.resetCaptcha();
-          setCaptchaToken(null);
-        }
-        // Otherwise, continue polling (MFA not yet approved)
-      }
+    const scheduleNextCheck = () => {
+      // Random interval between 5-8 seconds (5000-8000ms)
+      const randomInterval = Math.floor(Math.random() * 3000) + 5000;
+      pollingIntervalRef.current = setTimeout(() => {
+        checkMfaStatus(false);
+        scheduleNextCheck();
+      }, randomInterval);
     };
 
-    // Start polling every 2 seconds
-    pollingIntervalRef.current = setInterval(checkMfaStatus, 2000);
     // Check immediately
-    checkMfaStatus();
+    checkMfaStatus(false);
+    // Schedule next check
+    scheduleNextCheck();
   };
 
   async function onSubmit(event: React.FormEvent) {
@@ -269,24 +292,41 @@ export default function LoginPage() {
                   </p>
                 </div>
 
-                <Button
-                  onClick={() => {
-                    // Cancel MFA
-                    if (pollingIntervalRef.current) {
-                      clearInterval(pollingIntervalRef.current);
-                    }
-                    setMfaRequired(false);
-                    setMfaPolling(false);
-                    setMfaSessionUuid(null);
-                    setMfaToken(null);
-                    captchaRef.current?.resetCaptcha();
-                    setCaptchaToken(null);
-                  }}
-                  variant="outline"
-                  className="w-full"
-                >
-                  Cancel
-                </Button>
+                <div className="space-y-3">
+                  <Button
+                    onClick={() => checkMfaStatus(true)}
+                    disabled={isManualChecking}
+                    className="w-full bg-zinc-900 text-white hover:bg-black"
+                  >
+                    {isManualChecking ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Checking...
+                      </>
+                    ) : (
+                      "Check Now"
+                    )}
+                  </Button>
+
+                  <Button
+                    onClick={() => {
+                      // Cancel MFA
+                      if (pollingIntervalRef.current) {
+                        clearTimeout(pollingIntervalRef.current);
+                      }
+                      setMfaRequired(false);
+                      setMfaPolling(false);
+                      setMfaSessionUuid(null);
+                      setMfaToken(null);
+                      captchaRef.current?.resetCaptcha();
+                      setCaptchaToken(null);
+                    }}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    Cancel
+                  </Button>
+                </div>
               </div>
             ) : (
               /* Login Form */
