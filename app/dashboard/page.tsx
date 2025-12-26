@@ -72,7 +72,56 @@ let cachedFilterData = {
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 // --- Async Label Component ---
-const nameCache: Record<string, string> = {};
+// --- Entity Caches ---
+const userCache: Record<string, any> = {};
+const groupCache: Record<string, any> = {};
+const eventCache: Record<string, any> = {};
+
+// --- Fetch Helpers with Caching ---
+
+async function fetchUserDetails(uuid: string) {
+  if (userCache[uuid]) return userCache[uuid];
+  try {
+    const res = await http<{ data: any }>(`/api/student/${uuid}`);
+    if (res.data) {
+      userCache[uuid] = res.data;
+      return res.data;
+    }
+  } catch (err) {
+    console.error(`Error fetching user details for ${uuid}`, err);
+    return null;
+  }
+}
+
+async function fetchGroupDetails(uuid: string) {
+  if (groupCache[uuid]) return groupCache[uuid];
+  try {
+    const res = await http<{ data: any }>(`/api/group/${uuid}`);
+    if (res.data) {
+      groupCache[uuid] = res.data;
+      return res.data;
+    }
+  } catch (err) {
+    console.error(`Error fetching group details for ${uuid}`, err);
+    return null;
+  }
+}
+
+async function fetchEventDetails(uuid: string) {
+  if (eventCache[uuid]) return eventCache[uuid];
+  try {
+    const res = await http<{ data: any }>(`/api/event/${uuid}`);
+    if (res.data) {
+      eventCache[uuid] = res.data;
+      return res.data;
+    }
+  } catch (err) {
+    console.error(`Error fetching event details for ${uuid}`, err);
+    return null;
+  }
+}
+
+// --- Async Label Component ---
 
 interface AsyncLabelProps {
   type: "student" | "group" | "event";
@@ -80,41 +129,51 @@ interface AsyncLabelProps {
 }
 
 function AsyncLabel({ type, uuid }: AsyncLabelProps) {
-  const [name, setName] = useState<string>(nameCache[uuid] || "");
-  const [loading, setLoading] = useState(!nameCache[uuid]);
+  const [name, setName] = useState<string>("");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!uuid) return;
-    if (nameCache[uuid]) {
-      setName(nameCache[uuid]);
-      setLoading(false);
-      return;
-    }
 
     let isMounted = true;
-    const fetchDetail = async () => {
-      try {
-        const res = await http<{ data: any }>(`/api/${type}/${uuid}`);
-        if (isMounted && res.data) {
-          let fetchedName = "";
-          if (type === "student") fetchedName = res.data.student_name;
-          if (type === "group") fetchedName = res.data.group_name;
-          if (type === "event") fetchedName = res.data.event_name;
 
-          if (fetchedName) {
-            nameCache[uuid] = fetchedName;
-            setName(fetchedName);
-          } else {
-            setName("Unknown");
-          }
+    const loadData = async () => {
+      // Optimistically check cache first to avoid async delay if hot
+      let cachedData = null;
+      if (type === "student" && userCache[uuid]) cachedData = userCache[uuid];
+      if (type === "group" && groupCache[uuid]) cachedData = groupCache[uuid];
+      if (type === "event" && eventCache[uuid]) cachedData = eventCache[uuid];
+
+      if (cachedData) {
+        if (isMounted) {
+          if (type === "student") setName(cachedData.student_name);
+          if (type === "group") setName(cachedData.group_name);
+          if (type === "event") setName(cachedData.event_name);
+          setLoading(false);
         }
-      } catch (err) {
-        if (isMounted) setName("Unknown");
-      } finally {
-        if (isMounted) setLoading(false);
+        return;
+      }
+
+      // If not in cache, fetch
+      let data = null;
+      if (type === "student") data = await fetchUserDetails(uuid);
+      else if (type === "group") data = await fetchGroupDetails(uuid);
+      else if (type === "event") data = await fetchEventDetails(uuid);
+
+      if (isMounted) {
+        if (data) {
+          if (type === "student") setName(data.student_name);
+          else if (type === "group") setName(data.group_name);
+          else if (type === "event") setName(data.event_name);
+        } else {
+          setName("Unknown");
+        }
+        setLoading(false);
       }
     };
-    fetchDetail();
+
+    loadData();
+
     return () => { isMounted = false; };
   }, [type, uuid]);
 
