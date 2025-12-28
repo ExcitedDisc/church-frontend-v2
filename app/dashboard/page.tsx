@@ -77,48 +77,82 @@ const userCache: Record<string, any> = {};
 const groupCache: Record<string, any> = {};
 const eventCache: Record<string, any> = {};
 
-// --- Fetch Helpers with Caching ---
+const userPromises: Record<string, Promise<any>> = {};
+const groupPromises: Record<string, Promise<any>> = {};
+const eventPromises: Record<string, Promise<any>> = {};
+
+// --- Fetch Helpers with Caching and Deduplication ---
 
 async function fetchUserDetails(uuid: string) {
   if (userCache[uuid]) return userCache[uuid];
-  try {
-    const res = await http<{ data: any }>(`/api/student/${uuid}`);
-    if (res.data) {
-      userCache[uuid] = res.data;
-      return res.data;
+  if (userPromises[uuid]) return userPromises[uuid];
+
+  const promise = (async () => {
+    try {
+      const res = await http<{ data: any }>(`/api/student/${uuid}`);
+      if (res.data) {
+        userCache[uuid] = res.data;
+        return res.data;
+      }
+      return null;
+    } catch (err) {
+      console.error(`Error fetching user details for ${uuid}`, err);
+      return null;
+    } finally {
+      delete userPromises[uuid];
     }
-  } catch (err) {
-    console.error(`Error fetching user details for ${uuid}`, err);
-    return null;
-  }
+  })();
+
+  userPromises[uuid] = promise;
+  return promise;
 }
 
 async function fetchGroupDetails(uuid: string) {
   if (groupCache[uuid]) return groupCache[uuid];
-  try {
-    const res = await http<{ data: any }>(`/api/group/${uuid}`);
-    if (res.data) {
-      groupCache[uuid] = res.data;
-      return res.data;
+  if (groupPromises[uuid]) return groupPromises[uuid];
+
+  const promise = (async () => {
+    try {
+      const res = await http<{ data: any }>(`/api/group/${uuid}`);
+      if (res.data) {
+        groupCache[uuid] = res.data;
+        return res.data;
+      }
+      return null;
+    } catch (err) {
+      console.error(`Error fetching group details for ${uuid}`, err);
+      return null;
+    } finally {
+      delete groupPromises[uuid];
     }
-  } catch (err) {
-    console.error(`Error fetching group details for ${uuid}`, err);
-    return null;
-  }
+  })();
+
+  groupPromises[uuid] = promise;
+  return promise;
 }
 
 async function fetchEventDetails(uuid: string) {
   if (eventCache[uuid]) return eventCache[uuid];
-  try {
-    const res = await http<{ data: any }>(`/api/event/${uuid}`);
-    if (res.data) {
-      eventCache[uuid] = res.data;
-      return res.data;
+  if (eventPromises[uuid]) return eventPromises[uuid];
+
+  const promise = (async () => {
+    try {
+      const res = await http<{ data: any }>(`/api/event/${uuid}`);
+      if (res.data) {
+        eventCache[uuid] = res.data;
+        return res.data;
+      }
+      return null;
+    } catch (err) {
+      console.error(`Error fetching event details for ${uuid}`, err);
+      return null;
+    } finally {
+      delete eventPromises[uuid];
     }
-  } catch (err) {
-    console.error(`Error fetching event details for ${uuid}`, err);
-    return null;
-  }
+  })();
+
+  eventPromises[uuid] = promise;
+  return promise;
 }
 
 // --- Async Label Component ---
