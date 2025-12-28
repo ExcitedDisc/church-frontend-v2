@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, Eye, EyeOff, Church, AlertCircle } from "lucide-react";
-import { setRefreshToken, setEmail, setUUID } from "@/lib/auth";
+import { setRefreshToken, setEmail, setUUID, getRefreshToken } from "@/lib/auth";
+import { refreshAccessToken } from "@/lib/refreshtoken";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -38,7 +39,23 @@ export default function LoginPage() {
 
   useEffect(() => {
     setIsMounted(true);
-  }, []);
+
+    // Check for existing session
+    const checkSession = async () => {
+      const existingRefreshToken = getRefreshToken();
+      if (existingRefreshToken) {
+        try {
+          // Attempt to refresh to verify validity
+          await refreshAccessToken();
+          router.push("/dashboard");
+        } catch (e) {
+          // If refresh fails, stay on login page (cookies likely cleared by refreshAccessToken on error)
+          console.log("Auto-login failed:", e);
+        }
+      }
+    };
+    checkSession();
+  }, [router]); // Added router to dependency array as good practice
 
   // Cleanup polling on unmount
   useEffect(() => {

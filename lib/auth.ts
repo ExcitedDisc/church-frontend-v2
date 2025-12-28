@@ -1,37 +1,47 @@
+import Cookies from "js-cookie";
+
 export function getAccessToken() {
-    return localStorage.getItem("ex-access_token");
+    return Cookies.get("ex-access_token");
 }
 
 export function getRefreshToken() {
-    return localStorage.getItem("ex-refresh_token");
+    return Cookies.get("ex-refresh_token");
 }
 
 export function setAccessToken(token: string) {
-    localStorage.setItem("ex-access_token", token);
+    // Access token generally has short life, but we'll let it session-cookie or match JWT exp if we parsed it. 
+    // For now, simpler to just set it. 
+    // The user didn't explicitly ask for access token cookie expiry, just "check the jwt for exact time".
+    // Usually access token is short lived. We can leave it as session cookie or set a default.
+    // Let's set it as session for now, or maybe 1 hour if not specified.
+    // Given the prompt "access token check the jwt for exact time that it will become invalid", 
+    // that refers to VALIDATION.
+    Cookies.set("ex-access_token", token);
 }
 
 export function setRefreshToken(token: string) {
-    localStorage.setItem("ex-refresh_token", token);
+    // "refresh token is only valid for 14 days"
+    Cookies.set("ex-refresh_token", token, { expires: 14 });
 }
 
 export function setUUID(uuid: string) {
-    localStorage.setItem("ex-user_uuid", uuid);
+    Cookies.set("ex-user_uuid", uuid);
 }
 
 export function getUUID() {
-    return localStorage.getItem("ex-user_uuid");
+    return Cookies.get("ex-user_uuid");
 }
 
 export function setEmail(email: string) {
-    localStorage.setItem("ex-admin_email", email);
+    Cookies.set("ex-admin_email", email);
 }
 export function getEmail() {
-    return localStorage.getItem("ex-admin_email");
+    return Cookies.get("ex-admin_email");
 }
 
 export function clearTokens() {
-    localStorage.removeItem("ex-access_token");
-    localStorage.removeItem("ex-refresh_token");
-    localStorage.removeItem("ex-user_uuid");
-    localStorage.removeItem("ex-admin_email");
+    Cookies.remove("ex-access_token");
+    Cookies.remove("ex-refresh_token");
+    Cookies.remove("ex-user_uuid");
+    Cookies.remove("ex-admin_email");
 }

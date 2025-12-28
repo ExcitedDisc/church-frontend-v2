@@ -5,11 +5,11 @@ export interface JWTPayload {
   [key: string]: any;
 }
 
-export function isTokenExpired(token: string, bufferSeconds = 30): boolean {
+export function isTokenExpired(token: string, bufferSeconds = 0): boolean {
   try {
     const decoded = jwtDecode<JWTPayload>(token);
     const now = Date.now() / 1000;
-    // bufferSeconds: refresh slightly before expiry
+    // bufferSeconds: default 0 for exact check
     return decoded.exp < now + bufferSeconds;
   } catch (err) {
     return true; // invalid token considered expired
