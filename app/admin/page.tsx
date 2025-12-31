@@ -48,6 +48,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { getAccessToken } from "@/lib/auth"; // Add this import
 
 // --- Types ---
 
@@ -211,7 +212,8 @@ export default function UsersPage() {
 
   const handleDownloadLogs = async () => {
     try {
-        const token = localStorage.getItem("ex-access_token"); // Standardized key
+        const token = getAccessToken(); // Use secure cookie
+        if (!token) throw new Error("No access token found");
         const res = await fetch(`${BACKEND_URL}/api/auth/logs`, {
             headers: { "Authorization": `Bearer ${token}` }
         });

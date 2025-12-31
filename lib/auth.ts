@@ -9,34 +9,44 @@ export function getRefreshToken() {
 }
 
 export function setAccessToken(token: string) {
-    // Access token generally has short life, but we'll let it session-cookie or match JWT exp if we parsed it. 
-    // For now, simpler to just set it. 
-    // The user didn't explicitly ask for access token cookie expiry, just "check the jwt for exact time".
-    // Usually access token is short lived. We can leave it as session cookie or set a default.
-    // Let's set it as session for now, or maybe 1 hour if not specified.
-    // Given the prompt "access token check the jwt for exact time that it will become invalid", 
-    // that refers to VALIDATION.
-    Cookies.set("ex-access_token", token);
+    // Try to parse JWT and set expiry to match 'exp' claim
+    let options: Cookies.CookieAttributes = {
+        secure: true,
+        sameSite: "Strict"
+    };
+    try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        if (payload.exp) {
+            // exp is in seconds since epoch
+            const expires = new Date(payload.exp * 1000);
+            options.expires = expires;
+        }
+    } catch (e) {
+        // If parsing fails, fallback to session cookie
+    }
+    Cookies.set("ex-access_token", token, options);
 }
 
 export function setRefreshToken(token: string) {
-    // "refresh token is only valid for 14 days"
-    Cookies.set("ex-refresh_token", token, { expires: 14 });
+    Cookies.set("ex-refresh_token", token, { 
+        expires: 14, 
+        secure: true, 
+        sameSite: "Strict" 
+    });
 }
 
 export function setUUID(uuid: string) {
-    Cookies.set("ex-user_uuid", uuid);
-}
-
-export function getUUID() {
-    return Cookies.get("ex-user_uuid");
+    Cookies.set("ex-user_uuid", uuid, { 
+        secure: true, 
+        sameSite: "Strict" 
+    });
 }
 
 export function setEmail(email: string) {
-    Cookies.set("ex-admin_email", email);
-}
-export function getEmail() {
-    return Cookies.get("ex-admin_email");
+    Cookies.set("ex-admin_email", email, { 
+        secure: true, 
+        sameSite: "Strict" 
+    });
 }
 
 export function clearTokens() {
