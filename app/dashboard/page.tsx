@@ -85,7 +85,7 @@ const eventPromises: Record<string, Promise<any>> = {};
 
 async function fetchUserDetails(uuid: string) {
   if (userCache[uuid]) return userCache[uuid];
-  if (userPromises[uuid]) return userPromises[uuid];
+  if (userPromises[uuid] !== undefined) return userPromises[uuid];
 
   const promise = (async () => {
     try {
