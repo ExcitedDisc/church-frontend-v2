@@ -109,7 +109,7 @@ async function fetchUserDetails(uuid: string) {
 
 async function fetchGroupDetails(uuid: string) {
   if (groupCache[uuid]) return groupCache[uuid];
-  if (groupPromises[uuid]) return groupPromises[uuid];
+  if (groupPromises[uuid] !== undefined) return groupPromises[uuid];
 
   const promise = (async () => {
     try {
@@ -133,7 +133,7 @@ async function fetchGroupDetails(uuid: string) {
 
 async function fetchEventDetails(uuid: string) {
   if (eventCache[uuid]) return eventCache[uuid];
-  if (eventPromises[uuid]) return eventPromises[uuid];
+  if (eventPromises[uuid] !== undefined) return eventPromises[uuid];
 
   const promise = (async () => {
     try {
