@@ -488,9 +488,19 @@ export default function Dashboard() {
               {hasPermission("attendance:excel") && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild><Button variant="outline" className="gap-2"><Download className="h-4 w-4" /> Export</Button></DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => handleExcelExport('date')}><CalendarDays className="mr-2 h-4 w-4" /> Current Selection</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleExcelExport('full')}><FileSpreadsheet className="mr-2 h-4 w-4" /> Full Event History</DropdownMenuItem>
+                  <DropdownMenuContent align="end" className="w-64">
+                    <DropdownMenuItem onClick={() => handleExcelExport('date')} className="flex-col items-start gap-1">
+                      <div className="flex items-center">
+                        <CalendarDays className="mr-2 h-4 w-4" /> Current Selection
+                      </div>
+                      <span className="text-xs text-gray-500 ml-6">Export with attendance summary</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleExcelExport('full')} className="flex-col items-start gap-1">
+                      <div className="flex items-center">
+                        <FileSpreadsheet className="mr-2 h-4 w-4" /> Full Event History
+                      </div>
+                      <span className="text-xs text-gray-500 ml-6">Includes totals per date &amp; student</span>
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}
