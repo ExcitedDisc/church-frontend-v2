@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "sonner";
-import {ClarityInit, GtagInit} from "./tracking";
+// import {ClarityInit, GtagInit} from "./tracking";
 import { Amplitude } from '@/lib/amplitude';
 
 const geistSans = Geist({
@@ -23,6 +23,8 @@ export const metadata: Metadata = {
     shortcut: "https://public.neflcdn.uk/church/church-favico.ico",
   },
 };
+// comment
+// Disable clarity <ClarityInit />, GTAG <GtagInit />
 
 export default function RootLayout({
   children,
@@ -32,8 +34,6 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <ClarityInit />
-        <GtagInit />
         <Amplitude />
       </head>
       <body

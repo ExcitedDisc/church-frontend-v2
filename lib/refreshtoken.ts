@@ -35,7 +35,6 @@ export async function ensureAccessToken(): Promise<string> {
 
       const json = await res.json();
       token = json.data.access_token as string;
-      console.log("Saving access token:", token); // Debug line
       setAccessToken(token);
 
       onRefreshed(token);
