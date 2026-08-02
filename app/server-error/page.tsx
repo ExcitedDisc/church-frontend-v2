@@ -18,7 +18,7 @@ export default function ServerErrorPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+    <div className="min-h-screen flex items-center justify-center p-4">
       <Card className="w-full max-w-md shadow-lg border-red-100">
 
         <CardHeader className="text-center pb-2">

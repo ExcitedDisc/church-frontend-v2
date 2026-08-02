@@ -402,7 +402,7 @@ export default function StudentsPage() {
 
   if (!permLoading && !hasPermission("student:read")) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+      <div className="flex min-h-screen items-center justify-center">
         <div className="text-center p-8">
           <ShieldAlert className="h-12 w-12 text-red-500 mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-gray-900">Access Denied</h1>
@@ -414,7 +414,7 @@ export default function StudentsPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen">
       <div className="md:hidden fixed top-4 left-4 z-50">
         <Button onClick={() => setSidebarOpen(!sidebarOpen)} variant="outline" size="icon">
           <Menu className="h-6 w-6" />

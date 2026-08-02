@@ -264,20 +264,7 @@ export default function LoginPage() {
   if (!isMounted) return null;
 
   return (
-    <div className="relative w-full min-h-screen flex items-center justify-center overflow-hidden bg-gray-100">
-
-      {/* Background Image */}
-      <div
-        className="absolute inset-0 z-0 w-full h-full"
-        style={{
-          backgroundImage: `url('/images/diego-grimaz-sC1sjlUvNxg-unsplash.jpg')`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-        }}
-      >
-        {/* Light Overlay */}
-        <div className="absolute inset-0 bg-white/30 backdrop-blur-[2px]"></div>
-      </div>
+    <div className="relative w-full min-h-screen flex items-center justify-center overflow-hidden">
 
       {/* Light Glass Card */}
       <div className="relative z-10 w-full max-w-md p-8 mx-4">

@@ -164,7 +164,7 @@ export default function GroupsPage() {
   );
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen">
       
       {/* --- ADDED: Mobile Hamburger Toggle --- */}
       <div className="md:hidden fixed top-4 left-4 z-50">

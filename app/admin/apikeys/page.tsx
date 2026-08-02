@@ -205,11 +205,11 @@ export default function AdminApiKeysPage() {
 
     // --- Access Control ---
 
-    if (permLoading) return <div className="flex h-screen items-center justify-center bg-gray-50"><Loader2 className="h-8 w-8 animate-spin text-blue-600" /></div>;
+    if (permLoading) return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-blue-600" /></div>;
 
     if (!hasPermission("apikey:read")) {
         return (
-            <div className="flex min-h-screen items-center justify-center bg-gray-50">
+            <div className="flex min-h-screen items-center justify-center">
                 <div className="text-center p-8">
                     <ShieldAlert className="h-12 w-12 text-red-500 mx-auto mb-4" />
                     <h1 className="text-2xl font-bold text-gray-900">Access Denied</h1>
@@ -221,7 +221,7 @@ export default function AdminApiKeysPage() {
     }
 
     return (
-        <div className="flex min-h-screen bg-gray-50">
+        <div className="flex min-h-screen">
             {/* Mobile Toggle */}
             <div className="md:hidden fixed top-4 left-4 z-50">
                 <Button onClick={() => setSidebarOpen(!sidebarOpen)} variant="outline" size="icon">

@@ -5,7 +5,7 @@ import { Info, Shield, Lock, UserCheck, Mail } from "lucide-react";
 
 export default function GDPRPage() {
   return (
-    <div className="flex min-h-screen bg-gray-50 p-6 md:p-8">
+    <div className="flex min-h-screen p-6 md:p-8">
       <main className="flex-1 max-w-4xl mx-auto space-y-6">
 
         <div className="text-center">
