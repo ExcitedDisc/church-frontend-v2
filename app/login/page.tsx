@@ -262,6 +262,18 @@ export default function LoginPage() {
     if (errorMessage === "Please complete the captcha.") setErrorMessage("");
   };
 
+  const onCaptchaError = () => {
+    setCaptchaToken(null);
+    toast.error("Captcha verification failed. Retrying automatically — if this keeps happening, please contact your administrator.");
+    captchaRef.current?.reset();
+  };
+
+  const onCaptchaExpire = () => {
+    setCaptchaToken(null);
+    toast.info("Captcha expired, refreshing verification...");
+    captchaRef.current?.reset();
+  };
+
   if (!isMounted) return null;
 
   return (
@@ -398,6 +410,8 @@ export default function LoginPage() {
                   <Turnstile
                     siteKey={TURNSTILE_SITE_KEY}
                     onSuccess={onCaptchaVerify}
+                    onError={onCaptchaError}
+                    onExpire={onCaptchaExpire}
                     ref={captchaRef}
                     options={{ theme: "light", size: "invisible" }}
                   />
