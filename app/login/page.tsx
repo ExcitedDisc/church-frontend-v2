@@ -4,13 +4,14 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { request } from "@/lib/http";
 import { toast } from "sonner";
-import HCaptcha from "@hcaptcha/react-hcaptcha";
+import { Turnstile, type TurnstileInstance } from '@marsidev/react-turnstile'
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, Eye, EyeOff, Church, AlertCircle } from "lucide-react";
 import { setRefreshToken, setEmail, setUUID, getRefreshToken } from "@/lib/auth";
 import { refreshAccessToken } from "@/lib/refreshtoken";
+import { TURNSTILE_SITE_KEY } from "@/lib/config";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -34,7 +35,7 @@ export default function LoginPage() {
   const [isManualChecking, setIsManualChecking] = useState(false);
 
   // Refs
-  const captchaRef = useRef<HCaptcha>(null);
+  const captchaRef = useRef<TurnstileInstance>(null);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -157,7 +158,7 @@ export default function LoginPage() {
         toast.error(cleanMessage);
 
         // Reset form
-        captchaRef.current?.resetCaptcha();
+        captchaRef.current?.reset();
         setCaptchaToken(null);
       } else if (isManual) {
         // For manual checks, show info that it's still pending
@@ -247,7 +248,7 @@ export default function LoginPage() {
       toast.error(cleanMessage);
 
       // Reset sensitive/security fields
-      captchaRef.current?.resetCaptcha();
+      captchaRef.current?.reset();
       setCaptchaToken(null);
     } finally {
       if (!mfaRequired) {
@@ -340,7 +341,7 @@ export default function LoginPage() {
                       setMfaPolling(false);
                       setMfaSessionUuid(null);
                       setMfaToken(null);
-                      captchaRef.current?.resetCaptcha();
+                      captchaRef.current?.reset();
                       setCaptchaToken(null);
                     }}
                     variant="outline"
@@ -392,13 +393,13 @@ export default function LoginPage() {
                   </div>
                 </div>
 
-                {/* hCaptcha */}
+                {/* Turnstile */}
                 <div className="flex justify-center py-2">
-                  <HCaptcha
-                    sitekey="1398d654-52b2-4362-9280-011a6182d85e"
-                    onVerify={onCaptchaVerify}
+                  <Turnstile
+                    siteKey={TURNSTILE_SITE_KEY}
+                    onSuccess={onCaptchaVerify}
                     ref={captchaRef}
-                    theme="light"
+                    options={{ theme: "light" }}
                   />
                 </div>
 
