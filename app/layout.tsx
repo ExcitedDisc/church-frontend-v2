@@ -35,6 +35,7 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <Amplitude />
+        <link rel="preconnect" href="https://challenges.cloudflare.com" crossOrigin="" />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}

@@ -399,9 +399,16 @@ export default function LoginPage() {
                     siteKey={TURNSTILE_SITE_KEY}
                     onSuccess={onCaptchaVerify}
                     ref={captchaRef}
-                    options={{ theme: "light" }}
+                    options={{ theme: "light", size: "invisible" }}
                   />
                 </div>
+
+                <p className="text-center text-[11px] text-zinc-500 leading-snug">
+                  This site is protected by Cloudflare Turnstile, which verifies your
+                  request automatically and invisibly. If you experience repeated
+                  unsuccessful login attempts, please contact your administrator for
+                  assistance.
+                </p>
 
                 {/* Submit Button */}
                 <Button
