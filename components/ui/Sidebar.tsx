@@ -4,7 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { http } from "@/lib/http";
-import { clearTokens } from "@/lib/auth";
+import { clearTokens, getUsername } from "@/lib/auth";
 import {
     Users,
     UserCircle,
@@ -15,7 +15,15 @@ import {
     Shield,
     FileText,
     Key,
+    CircleUserRound,
+    ChevronsUpDown,
 } from "lucide-react";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface SidebarProps {
     sidebarOpen: boolean;
@@ -25,6 +33,7 @@ interface SidebarProps {
 export default function Sidebar({ sidebarOpen, setSidebarOpen }: SidebarProps) {
     const router = useRouter();
     const pathname = usePathname();
+    const username = getUsername();
 
     const menuItems = [
         { label: "Dashboard", href: "/dashboard", icon: <UserCircle className="w-5 h-5" /> },
@@ -104,15 +113,29 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }: SidebarProps) {
                     </div>
                 </nav>
 
-                {/* Logout Section */}
+                {/* User Menu */}
                 <div className="border-t border-gray-200 p-4">
-                    <button
-                        onClick={handleLogout}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-red-50 transition text-gray-600 hover:text-red-600 group text-left"
-                    >
-                        <LogOut className="w-5 h-5 text-gray-400 group-hover:text-red-500 transition-colors" />
-                        <p className="text-sm font-medium">Logout</p>
-                    </button>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-50 transition text-gray-700 text-left">
+                                <CircleUserRound className="w-6 h-6 text-gray-400 shrink-0" />
+                                <span className="text-sm font-medium truncate flex-1">
+                                    {username || "Account"}
+                                </span>
+                                <ChevronsUpDown className="w-4 h-4 text-gray-400 shrink-0" />
+                            </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" side="top" className="w-56">
+                            <DropdownMenuItem onClick={() => router.push("/account")}>
+                                <CircleUserRound className="w-4 h-4 mr-2" />
+                                Manage Account
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={handleLogout} className="text-red-600 focus:text-red-600">
+                                <LogOut className="w-4 h-4 mr-2" />
+                                Logout
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
             </aside>
         </>

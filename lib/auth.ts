@@ -8,6 +8,11 @@ export function getRefreshToken() {
     return Cookies.get("ex-refresh_token");
 }
 
+// NOTE: despite the cookie name, this actually stores the admin's username (set via setEmail(admin_username) at login) — there is no Admin.email column yet.
+export function getUsername() {
+    return Cookies.get("ex-admin_email");
+}
+
 export function setAccessToken(token: string) {
     // Try to parse JWT and set expiry to match 'exp' claim
     let options: Cookies.CookieAttributes = {
