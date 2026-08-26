@@ -413,15 +413,14 @@ export default function LoginPage() {
                     onError={onCaptchaError}
                     onExpire={onCaptchaExpire}
                     ref={captchaRef}
-                    options={{ theme: "light", size: "invisible" }}
+                    options={{ theme: "light", size: "normal" }}
                   />
                 </div>
 
                 <p className="text-center text-[11px] text-zinc-500 leading-snug">
-                  This site is protected by Cloudflare Turnstile, which verifies your
-                  request automatically and invisibly. If you experience repeated
-                  unsuccessful login attempts, please contact your administrator for
-                  assistance.
+                  This site is protected by Cloudflare Turnstile. If you experience
+                  repeated unsuccessful login attempts, please contact your
+                  administrator for assistance.
                 </p>
 
                 {/* Submit Button */}
