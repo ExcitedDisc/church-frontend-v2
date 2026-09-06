@@ -1,58 +1,111 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Wrench, Clock, CalendarClock } from "lucide-react";
-import { DateTime } from "luxon";
 
 function MaintenanceContent() {
   const searchParams = useSearchParams();
   const availableParam = searchParams.get("available");
 
-  let localTime: string | null = null;
-  let timezone: string | null = null;
+  const [localTime, setLocalTime] = useState<string | null>(null);
+  const [timezone, setTimezone] = useState<string | null>(null);
 
-  if (availableParam) {
+  useEffect(() => {
+    if (!availableParam) return;
+
     try {
       // Expected format:
+      // YYYY-MM-DD_HH-MM-SS
+      // Example:
       // 2026-09-10_18-30-00
 
-      const londonTime = DateTime.fromFormat(
-        availableParam,
-        "yyyy-MM-dd_HH-mm-ss",
-        {
-          zone: "Europe/London",
-        }
+      const match = availableParam.match(
+        /^(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})-(\d{2})$/
       );
 
-      if (londonTime.isValid) {
-        // Detect visitor's timezone
-        timezone =
-          Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-        // Convert from UK time to visitor's local timezone
-        const visitorTime = londonTime.setZone(timezone);
-
-        localTime = visitorTime.toLocaleString(
-          {
-            weekday: "long",
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-          },
-          {
-            locale: navigator.language,
-          }
-        );
+      if (!match) {
+        setLocalTime("Invalid maintenance time");
+        return;
       }
+
+      const [, year, month, day, hour, minute, second] = match;
+
+      /*
+       * The query time is Europe/London time.
+       *
+       * We create a date representation and use Intl to correctly
+       * handle UK GMT/BST daylight-saving changes.
+       */
+
+      const londonDateString =
+        `${year}-${month}-${day}T${hour}:${minute}:${second}`;
+
+      // Get the timezone offset for Europe/London at this specific time
+      const formatter = new Intl.DateTimeFormat("en-GB", {
+        timeZone: "Europe/London",
+        timeZoneName: "longOffset",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hourCycle: "h23",
+      });
+
+      // Start by treating the supplied values as UTC
+      let date = new Date(`${londonDateString}Z`);
+
+      // Find London's offset at that date
+      const parts = formatter.formatToParts(date);
+
+      const offsetPart = parts.find(
+        (part) => part.type === "timeZoneName"
+      );
+
+      let offsetMinutes = 0;
+
+      if (offsetPart) {
+        const offset = offsetPart.value;
+
+        // GMT+01:00 / GMT / GMT+00:00
+        const offsetMatch = offset.match(
+          /GMT([+-])(\d{2}):(\d{2})/
+        );
+
+        if (offsetMatch) {
+          const sign = offsetMatch[1] === "+" ? 1 : -1;
+          const hours = Number(offsetMatch[2]);
+          const minutes = Number(offsetMatch[3]);
+
+          offsetMinutes = sign * (hours * 60 + minutes);
+        }
+      }
+
+      // Convert London local time into UTC
+      date = new Date(
+        date.getTime() - offsetMinutes * 60 * 1000
+      );
+
+      const visitorTimezone =
+        Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+      setTimezone(visitorTimezone);
+
+      // Display in the visitor's local timezone
+      const formattedTime = new Intl.DateTimeFormat(undefined, {
+        dateStyle: "full",
+        timeStyle: "medium",
+      }).format(date);
+
+      setLocalTime(formattedTime);
     } catch (error) {
       console.error("Failed to parse maintenance time:", error);
+      setLocalTime("Unable to determine availability time");
     }
-  }
+  }, [availableParam]);
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-background">
@@ -72,7 +125,7 @@ function MaintenanceContent() {
         <CardContent className="text-center space-y-6">
           <p className="text-muted-foreground">
             We are currently performing scheduled maintenance to improve
-            our services. We&apos;ll be back as soon as possible.
+            our services. We'll be back as soon as possible.
           </p>
 
           {localTime ? (
@@ -84,21 +137,22 @@ function MaintenanceContent() {
 
               <div className="flex items-center justify-center gap-2">
                 <Clock className="h-5 w-5 text-amber-600" />
-
                 <p className="font-semibold text-lg">
                   {localTime}
                 </p>
               </div>
 
-              <p className="text-xs text-muted-foreground">
-                Displayed in your local timezone ({timezone})
-              </p>
+              {timezone && (
+                <p className="text-xs text-muted-foreground">
+                  Displayed in your local timezone ({timezone})
+                </p>
+              )}
             </div>
           ) : (
             <div className="rounded-lg border bg-muted/50 p-4">
               <p className="text-sm text-muted-foreground">
-                We&apos;re currently performing maintenance. Please check
-                back soon.
+                We're working hard to bring the service back online.
+                Please check back soon.
               </p>
             </div>
           )}
@@ -114,15 +168,8 @@ function MaintenanceContent() {
 
 export default function MaintenancePage() {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen flex items-center justify-center">
-          Loading...
-        </div>
-      }
-    >
+    <Suspense fallback={null}>
       <MaintenanceContent />
     </Suspense>
   );
 }
-
